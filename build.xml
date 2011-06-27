@@ -1,0 +1,160 @@
+<project name="reconcile-hbase-annotations" default="compile" basedir="." >
+
+	<description>Code to interact with hbase</description>
+
+	<property name="antMavenBuildDir" value="../ant-maven-build"/>
+	<import file="${antMavenBuildDir}/build.xml"/>
+	
+	<!--  =================================================================== -->
+	<!--  run targets                     -->
+	<!--  =================================================================== -->
+
+	<!-- =================================================================== -->
+	<!-- m/r query tasks -->
+	<!-- =================================================================== -->
+	<target name="checkAnnotations" depends="jars" description="check annotation strings. params: src">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${depJarFile}" />
+			<arg value="reconcile.hbase.mapreduce.annotation.AnnotationChecker" />
+			<arg value="-table=${table}" />
+			<arg value="-source=${src}" />
+		</exec>
+	</target>
+
+	<target name="stripBadAnnotations" depends="jars" description="strip bad annotation strings. params: src">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${depJarFile}" />
+			<arg value="reconcile.hbase.mapreduce.annotation.BadAnnotationStripper" />
+			<arg value="-source=${src}" />
+		</exec>
+	</target>
+
+	
+	<!-- ======================================================= -->
+	<!-- annotation tasks -->
+	<!-- ======================================================= -->
+	<target name="baseAnnot" depends="hadoopJar" description="execute base NLP annotations over entire doc table">
+		<echo>Filter Source : ${src}</echo>
+		<echo>Filter HDFS Key List File : ${keyList}</echo>
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="reconcile.hbase.mapreduce.annotation.BaseReconcileAnnotation" />
+			<arg value="-source=${src}"/>
+			<arg value="-keyList=${keyList}" />
+		</exec>
+		<sleep seconds="10" />
+		<exec executable="${hadoop}">
+			<arg value="job" />
+			<arg value="-list" />
+		</exec>
+	</target>
+
+	<target name="parAnnot" depends="hadoopJar" description="paragraph annotations over entire doc table">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="trinidad.hbase.mapreduce.annotation.ParagraphAnnotation" />
+		</exec>
+	</target>
+	<target name="sentAnnot" depends="hadoopJar" description="sentence annotations over entire doc table">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="trinidad.hbase.mapreduce.annotation.SentenceAnnotation" />
+		</exec>
+	</target>
+	<target name="tokenAnnot" depends="hadoopJar" description="token annotations over entire doc table">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="trinidad.hbase.mapreduce.annotation.TokenAnnotation" />
+		</exec>
+	</target>
+	<target name="posAnnot" depends="hadoopJar" description="POS annotations over entire doc table">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="trinidad.hbase.mapreduce.annotation.POSAnnotation" />
+		</exec>
+	</target>
+
+	<target name="neAnnot" depends="hadoopJar" description="execute named entity annotations over  doc table">
+		<echo>Filter Source : ${src}</echo>
+		<echo>Filter HDFS Key List File : ${keyList}</echo>
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="reconcile.hbase.mapreduce.annotation.NEAnnotation" />
+			<arg value="-source=${src}"/>
+			<arg value="-keyList=${keyList}" />
+		</exec>
+	</target>
+
+	<target name="parserAnnot" depends="hadoopJar" description="execute parser annotations over doc table ">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="reconcile.hbase.mapreduce.annotation.ParserAnnotation" />
+			<arg value="-source=${src}" />
+			<arg value="-keyList=${keyList}" />
+		</exec>
+	</target>
+
+	<target name="bnpAnnot" depends="hadoopJar" description="execute base NP annotations over doc table ">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="reconcile.hbase.mapreduce.annotation.BaseNPAnnotation" />
+			<arg value="-source=${src}" />
+			<arg value="-keyList=${keyList}" />
+		</exec>
+	</target>
+
+	<target name="corefAnnot" depends="hadoopJar" description="execute coref annotations over doc table ">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="reconcile.hbase.mapreduce.annotation.CorefResolver" />
+			<arg value="-source=${src}" />
+			<arg value="-keyList=${keyList}" />
+		</exec>
+	</target>
+
+	<target name="corefPairs" depends="hadoopJar" description="execute coref pair annotations over doc table ">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="reconcile.hbase.mapreduce.annotation.CorefPairs" />
+			<arg value="-source=${src}" />
+			<arg value="-keyList=${keyList}" />
+		</exec>
+	</target>
+
+	<target name="annotate" depends="hadoopJar" description="Run all neccessary annotators">
+		<echo>Source name: ${src}</echo>
+		<echo>Key List File: ${keyList}</echo>
+		<antcall target="baseAnnot"/>
+		<antcall target="neAnnot"/>
+		<antcall target="parserAnnot"/>
+		<antcall target="bnpAnnot"/>
+		<antcall target="corefPairs"/>
+
+	</target>
+
+	<target name="printNPs" depends="hadoopJar" description="print the different types of treebank tag counts">
+		<exec executable="${hadoop}" spawn="false">
+			<arg value="jar" />
+			<arg value="${hadoopJarFile}" />
+			<arg value="reconcile.hbase.mapreduce.GenericMapper" />
+			<arg value="-source=${src}" />
+			<arg value="-keyList=${keyList}" />
+			<arg value="-family=annotations" />
+			<arg value="-family=text" />
+			<arg value="-mapper=reconcile.hbase.mapper.PrintNPs" />
+		</exec>
+	</target>
+
+</project>
